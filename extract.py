@@ -3,12 +3,14 @@ from pprint import pprint
 from functools import cached_property
 import typing as t
 
+from cache_tools import cache_disk
 
 import logging
 log = logging.getLogger(__name__)
 
 import urllib.request
 import json
+@cache_disk()
 def get_json(url, headers={}):
     req = urllib.request.Request(url, headers={"Content-type": "application/json", **headers})
     with urllib.request.urlopen(req) as r:
@@ -35,13 +37,20 @@ class MicrosoftGraphObjectBase():
         return str(self)
     @cached_property
     def data(self):
-        return self.g(self.path)
+        return self.g.get(self.path)
+    def _subpath(self, path, cls) -> t.Dict[str, object]:
+        return {
+            s['displayName']: cls(self.g, s['self'])
+            for s in self.g.get(self.path + path)['value']
+        }
 
 class NoteBookSection(MicrosoftGraphObjectBase):
     pass
 
 class NoteBookSectionGroup(MicrosoftGraphObjectBase):
-    pass
+    @property
+    def sections(self) -> t.Dict[str, NoteBookSection]:
+        return self._subpath('/sections', NoteBookSection)
 
 class NoteBook(MicrosoftGraphObjectBase):
     @property
@@ -49,16 +58,10 @@ class NoteBook(MicrosoftGraphObjectBase):
         return self.data['displayName']
     @property
     def sections(self) -> t.Dict[str, NoteBookSection]:
-        return {
-            s['displayName']: NoteBookSection(self.g, s['self'])
-            for s in self.g.get(self.path + '/sections')['value']
-        }
+        return self._subpath('/sections', NoteBookSection)
     @property
     def sectionGroups(self) -> t.Dict[str, NoteBookSectionGroup]:
-        return {
-            s['displayName']: NoteBookSectionGroup(self.g, s['self'])
-            for s in self.g.get(self.path + '/sectionGroups')['value']
-        }
+        return self._subpath('/sectionGroups', NoteBookSectionGroup)
 
 
 
@@ -93,7 +96,7 @@ if __name__ == "__main__":
         #g.get('users/sm1161@canterbury.ac.uk/onenote/notebooks')
         # This has the groupid urls
 
-        User(g, 'sm1161@canterbury.ac.uk').onenote_notebooks['CCCU SD e-portfolio 22 - Computing'].sectionGroups
+        User(g, 'sm1161@canterbury.ac.uk').onenote_notebooks['CCCU SD e-portfolio 22 - Computing'].sectionGroups['Anthony Smith'].sections
 
         # g.get('users/sm1161@canterbury.ac.uk/onenote/notebooks/1-c45f72e9-0b2b-4e65-a0d0-4c7d901749b7/sections') No work - 401 -empty because it has sectionGroups
 
