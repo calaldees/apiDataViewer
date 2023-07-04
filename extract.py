@@ -12,6 +12,7 @@ import urllib.request
 import json
 @cache_disk()
 def get_json(url, headers={}):
+    log.info(url)
     req = urllib.request.Request(url, headers={"Content-type": "application/json", **headers})
     with urllib.request.urlopen(req) as r:
         return json.load(r)
@@ -24,7 +25,6 @@ class MicrosoftGraph():
         self.token = token
     def get(self, path:str) -> dict:
         url = self.ENDPOINT+path if not path.startswith(self.ENDPOINT) else path
-        log.debug(url)
         return get_json(url, headers={"Authorization": f"Bearer {self.token}"})
 
 class MicrosoftGraphObjectBase():
@@ -80,7 +80,7 @@ class User():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     #print(get_json("https://jsonplaceholder.typicode.com/todos/1"))
     g = MicrosoftGraph(os.environ['token'])
