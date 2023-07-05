@@ -41,6 +41,9 @@ class MicrosoftGraphObjectBase():
     @cached_property
     def data(self) -> MappingProxyType[str, object]:
         return harden(self.g.get(self.path))
+    @property
+    def name(self):
+        return self.data.get('name') or self.data.get('displayName')
     def _subpath(self, path:str, cls) -> MappingProxyType[str, object]:
         return harden({
             s['displayName']: cls(self.g, s['self'])
@@ -57,9 +60,6 @@ class NoteBookSectionGroup(MicrosoftGraphObjectBase):
 
 class NoteBook(MicrosoftGraphObjectBase):
     @property
-    def displayName(self):
-        return self.data['displayName']
-    @property
     def sections(self) -> MappingProxyType[str, NoteBookSection]:
         return self._subpath('/sections', NoteBookSection)
     @property
@@ -73,7 +73,7 @@ class User():
         self.g = g
         self.user = user
     @property
-    def onenote_notebooks(self) -> t.Dict[str, NoteBook]:
+    def onenote_notebooks(self) -> MappingProxyType[str, NoteBook]:
         return {
             n['displayName']: NoteBook(self.g, n['self'])
             for n in self.g.get(f"users/{self.user}/onenote/notebooks")['value']
