@@ -1,9 +1,12 @@
 import os
 from pprint import pprint
 from functools import cached_property
+
+from types import MappingProxyType
 import typing as t
 
 from cache_tools import cache_disk
+from _utils import harden
 
 import logging
 log = logging.getLogger(__name__)
@@ -36,20 +39,20 @@ class MicrosoftGraphObjectBase():
     def __repr__(self):
         return str(self)
     @cached_property
-    def data(self):
-        return self.g.get(self.path)
-    def _subpath(self, path, cls) -> t.Dict[str, object]:
-        return {
+    def data(self) -> MappingProxyType[str, object]:
+        return harden(self.g.get(self.path))
+    def _subpath(self, path:str, cls) -> MappingProxyType[str, object]:
+        return harden({
             s['displayName']: cls(self.g, s['self'])
             for s in self.g.get(self.path + path)['value']
-        }
+        })
 
 class NoteBookSection(MicrosoftGraphObjectBase):
     pass
 
 class NoteBookSectionGroup(MicrosoftGraphObjectBase):
     @property
-    def sections(self) -> t.Dict[str, NoteBookSection]:
+    def sections(self) -> MappingProxyType[str, NoteBookSection]:
         return self._subpath('/sections', NoteBookSection)
 
 class NoteBook(MicrosoftGraphObjectBase):
@@ -57,10 +60,10 @@ class NoteBook(MicrosoftGraphObjectBase):
     def displayName(self):
         return self.data['displayName']
     @property
-    def sections(self) -> t.Dict[str, NoteBookSection]:
+    def sections(self) -> MappingProxyType[str, NoteBookSection]:
         return self._subpath('/sections', NoteBookSection)
     @property
-    def sectionGroups(self) -> t.Dict[str, NoteBookSectionGroup]:
+    def sectionGroups(self) -> MappingProxyType[str, NoteBookSectionGroup]:
         return self._subpath('/sectionGroups', NoteBookSectionGroup)
 
 
