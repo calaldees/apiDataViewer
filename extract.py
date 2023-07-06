@@ -1,6 +1,7 @@
 import os
 from pprint import pprint
 from functools import cached_property, partial
+import re
 
 from types import MappingProxyType
 import typing as t
@@ -18,7 +19,7 @@ import json
 from bs4 import BeautifulSoup  # pip install beautifulsoup4
 CONTENT_TYPE_PARSERS = {
     'json': ("application/json", json.load),
-    'html': ("text/html", partial(BeautifulSoup, features="html.parser")),
+    'html': ("text/html", partial(BeautifulSoup, features="html.parser")), #'html5lib'
 }
 @cache_disk()
 def get_url(url:str, type:str='json', headers={}, CONTENT_TYPE_PARSERS:t.Dict=CONTENT_TYPE_PARSERS):
@@ -91,8 +92,6 @@ class NoteBook(MicrosoftGraphObjectBase):
     def sectionGroups(self) -> MappingProxyType[str, NoteBookSectionGroup]:
         return self._subpath('/sectionGroups', NoteBookSectionGroup)
 
-
-
 class User():
     def __init__(self, g:MicrosoftGraph, user:str):
         self.g = g
@@ -105,15 +104,32 @@ class User():
         }
     
 
+class Journal():
+    def __init__(self, soup:BeautifulSoup):
+        self.soup = soup
+    @cached_property
+    def targets(self):
+        def _get_target(target):
+            e = self.soup.find(string=re.compile(target+'.+target', flags=re.IGNORECASE)).find_next('td')
+            return {
+                'target': e.text.strip(),
+                'action_mentor': e.find_next(string=re.compile('action.+mentor', flags=re.IGNORECASE)).find_next('td').text.strip(),
+                'action_student': e.find_next(string=re.compile('action.+student', flags=re.IGNORECASE)).find_next('td').text.strip(),
+            }
+        return {
+            target: _get_target(target)
+            for target in ('curriculum','subject','pedagogy')
+        }
+
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    #print(get_json("https://jsonplaceholder.typicode.com/todos/1"))
     g = MicrosoftGraph(os.environ['token'])
 
-    ss = User(g, 'sm1161@canterbury.ac.uk').onenote_notebooks['CCCU SD e-portfolio 22 - Computing'].sectionGroups['Anthony Smith'].sections['Attendance Record'].pages['Term 1'].content
+    journal = User(g, 'sm1161@canterbury.ac.uk').onenote_notebooks['CCCU SD e-portfolio 22 - Computing'].sectionGroups['Anthony Smith'].sections['Mentor Meeting Journal'].pages['WB 27th March'].content  #['Attendance Record'].pages['Term 1'].content
+    jj = Journal(journal)
     breakpoint()
     
     
