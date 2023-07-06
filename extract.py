@@ -1,6 +1,6 @@
 import os
 from pprint import pprint
-from functools import cached_property
+from functools import cached_property, partial
 
 from types import MappingProxyType
 import typing as t
@@ -11,14 +11,22 @@ from _utils import harden
 import logging
 log = logging.getLogger(__name__)
 
+
 import urllib.request
+
 import json
+from bs4 import BeautifulSoup  # pip install beautifulsoup4
+CONTENT_TYPE_PARSERS = {
+    'json': ("application/json", json.load),
+    'html': ("text/html", partial(BeautifulSoup, features="html.parser")),
+}
 @cache_disk()
-def get_json(url, headers={}):
+def get_url(url:str, type:str='json', headers={}, CONTENT_TYPE_PARSERS:t.Dict=CONTENT_TYPE_PARSERS):
     log.info(url)
-    req = urllib.request.Request(url, headers={"Content-type": "application/json", **headers})
-    with urllib.request.urlopen(req) as r:
-        return json.load(r)
+    mime_type, response_parse_func = CONTENT_TYPE_PARSERS[type]
+    request = urllib.request.Request(url, headers={"Content-type": mime_type, **headers})
+    with urllib.request.urlopen(request) as response:
+        return response_parse_func(response)
 
 
 class MicrosoftGraph():
@@ -26,9 +34,13 @@ class MicrosoftGraph():
     def __init__(self, token:str):
         assert len(token) > 2000 and len(token) < 2500, "Setup `token` environ from https://developer.microsoft.com/en-us/graph/graph-explorer"
         self.token = token
-    def get(self, path:str) -> dict:
-        url = self.ENDPOINT+path if not path.startswith(self.ENDPOINT) else path
-        return get_json(url, headers={"Authorization": f"Bearer {self.token}"})
+    def _normalise_path(self, path):
+        return self.ENDPOINT+path if not path.startswith(self.ENDPOINT) else path
+    def get_json(self, path:str):
+        return get_url(self._normalise_path(path), type='json', headers={"Authorization": f"Bearer {self.token}"})
+    def get_html(self, path:str) -> BeautifulSoup:
+        return get_url(self._normalise_path(path), type='html', headers={"Authorization": f"Bearer {self.token}"})
+
 
 class MicrosoftGraphObjectBase():
     def __init__(self, g:MicrosoftGraph, path:str):
@@ -37,21 +49,34 @@ class MicrosoftGraphObjectBase():
     def __str__(self):
         return self.path
     def __repr__(self):
-        return str(self)
+        return f"<{self.__class__.__name__}>:{self}"
+    @staticmethod
+    def _normalise_name(d: MappingProxyType[str: object], name_keys=('name', 'displayName', 'title')) -> str:
+        for key in name_keys:
+            value = d.get(key)
+            if value:
+                return value
     @cached_property
     def data(self) -> MappingProxyType[str, object]:
-        return harden(self.g.get(self.path))
+        return harden(self.g.get_json(self.path))
     @property
     def name(self):
-        return self.data.get('name') or self.data.get('displayName')
+        return self._normalise_name(self.data)
     def _subpath(self, path:str, cls) -> MappingProxyType[str, object]:
         return harden({
-            s['displayName']: cls(self.g, s['self'])
-            for s in self.g.get(self.path + path)['value']
+            self._normalise_name(s): cls(self.g, s['self'])
+            for s in self.g.get_json(self.path + path)['value']
         })
 
+class NoteBookPage(MicrosoftGraphObjectBase):
+    @property
+    def content(self) -> BeautifulSoup:
+        return self.g.get_html(self.path + '/content')
+
 class NoteBookSection(MicrosoftGraphObjectBase):
-    pass
+    @property
+    def pages(self) -> MappingProxyType[str, NoteBookPage]:
+        return self._subpath('/pages', NoteBookPage)
 
 class NoteBookSectionGroup(MicrosoftGraphObjectBase):
     @property
@@ -76,7 +101,7 @@ class User():
     def onenote_notebooks(self) -> MappingProxyType[str, NoteBook]:
         return {
             n['displayName']: NoteBook(self.g, n['self'])
-            for n in self.g.get(f"users/{self.user}/onenote/notebooks")['value']
+            for n in self.g.get_json(f"users/{self.user}/onenote/notebooks")['value']
         }
     
 
@@ -87,6 +112,12 @@ if __name__ == "__main__":
 
     #print(get_json("https://jsonplaceholder.typicode.com/todos/1"))
     g = MicrosoftGraph(os.environ['token'])
+
+    ss = User(g, 'sm1161@canterbury.ac.uk').onenote_notebooks['CCCU SD e-portfolio 22 - Computing'].sectionGroups['Anthony Smith'].sections['Attendance Record'].pages['Term 1'].content
+    breakpoint()
+    
+    
+
     pprint(
         #g.get('me/drive/root/children')
         #g.get('me/onenote/notebooks')
@@ -99,7 +130,6 @@ if __name__ == "__main__":
         #g.get('users/sm1161@canterbury.ac.uk/onenote/notebooks')
         # This has the groupid urls
 
-        User(g, 'sm1161@canterbury.ac.uk').onenote_notebooks['CCCU SD e-portfolio 22 - Computing'].sectionGroups['Anthony Smith'].sections
 
         # g.get('users/sm1161@canterbury.ac.uk/onenote/notebooks/1-c45f72e9-0b2b-4e65-a0d0-4c7d901749b7/sections') No work - 401 -empty because it has sectionGroups
 
