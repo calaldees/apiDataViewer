@@ -1,6 +1,9 @@
+import logging
+log = logging.getLogger(__name__)
+
+
 from types import MappingProxyType
 from typing import Mapping, Iterable
-
 def harden(data):
     """
     >>> harden({"a": [1,2,3]})
@@ -18,3 +21,23 @@ def harden(data):
         return tuple((harden(i) for i in data))
     return data
 
+
+
+
+#import json
+#from bs4 import BeautifulSoup  # pip install beautifulsoup4
+#CONTENT_TYPE_PARSERS = {
+#    'json': ("application/json", json.load),
+#    'html': ("text/html", partial(BeautifulSoup, features="html.parser")), #'html5lib'
+#}
+#CONTENT_TYPE_PARSERS:t.Dict=CONTENT_TYPE_PARSERS
+#mime_type, response_parse_func = CONTENT_TYPE_PARSERS[type]
+
+import urllib.request
+from cache_tools import cache_disk
+@cache_disk()
+def urllib_request(*args, **kwargs):
+    log.info(args[0])
+    request = urllib.request.Request(*args, **kwargs)
+    with urllib.request.urlopen(request) as response:
+        return response
