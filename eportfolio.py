@@ -5,6 +5,11 @@ import re
 from bs4 import BeautifulSoup
 
 
+class ePortfolioManager():
+    def __init__(self, notebooks):
+        self.notebooks = notebooks
+
+
 class Journal():
     def __init__(self, html):
         self.soup = BeautifulSoup(html, features="html.parser")

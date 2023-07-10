@@ -1,9 +1,12 @@
 import os
 from pprint import pprint
 
+from collections import ChainMap
+
 import logging
 log = logging.getLogger(__name__)
 
+from _utils import get_key_contains
 from microsoft_graph import MicrosoftGraph, MicrosoftUser
 from eportfolio import Journal
 
@@ -11,19 +14,40 @@ from eportfolio import Journal
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    g = MicrosoftGraph(os.environ['token'])
+    token = os.environ.get('token')
+    assert token, "$token should exist in environ - see https://developer.microsoft.com/en-us/graph/graph-explorer"
+    g = MicrosoftGraph(token)
 
-    journal_content = MicrosoftUser(g, 'sm1161@canterbury.ac.uk') \
-        .onenote_notebooks['CCCU SD e-portfolio 22 - Computing'] \
-        .sectionGroups['Anthony Smith'] \
-        .sections['Mentor Meeting Journal'] \
-        .pages['WB 27th March'] \
-        .content
+    #journal_content = MicrosoftUser(g, 'sm1161@canterbury.ac.uk') \
+    #    .onenote_notebooks['CCCU SD e-portfolio 22 - Computing'] \
+    #    .sectionGroups['Anthony Smith'] \
+    #    .sections['Mentor Meeting Journal'] \
+    #    .pages['WB 27th March'] \
+    #    .content
     #['Attendance Record'].pages['Term 1'].content
 
-    jj = Journal(journal_content)
-    jj.target_reflections
-    breakpoint()
+    #jj = Journal(journal_content)
+    #jj.target_reflections
+
+    notebooks = MicrosoftUser(g, 'sm1161@canterbury.ac.uk') .onenote_notebooks
+
+    def get_Journal(notebook):
+        journal_section = get_key_contains(notebook.sections, 'journal')
+        if not journal_section: return
+        journal_date = get_key_contains(journal_section.pages, '27th March')
+        if not journal_date: return
+        return Journal(journal_date.content)
+
+    targets = {
+        student_name: get_Journal(notebook).targets
+        for student_name, notebook in ChainMap(
+            notebooks['CCCU SD e-portfolio 22 - Computing'].sectionGroups,
+            notebooks['CCCU PG e-portfolio 22 - Computing'].sectionGroups,
+        ).items()
+        if get_Journal(notebook)
+    }
+
+    
     
     
 
