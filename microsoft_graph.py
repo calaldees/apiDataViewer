@@ -3,7 +3,6 @@ import typing as t
 from functools import cached_property
 
 import json
-from bs4 import BeautifulSoup
 
 from _utils import urllib_request, harden
 
@@ -21,9 +20,9 @@ class MicrosoftGraph():
     def _normalise_path(self, path):
         return self.ENDPOINT+path if not path.startswith(self.ENDPOINT) else path
     def get_json(self, path:str):
-        return json.load(urllib_request(self._normalise_path(path), type='json', headers={"Content-type": "application/json", "Authorization": f"Bearer {self.token}"}))
-    def get_html(self, path:str) -> BeautifulSoup:
-        return BeautifulSoup(urllib_request(self._normalise_path(path), headers={"Content-type": "text/html", "Authorization": f"Bearer {self.token}"}), features="html.parser")
+        return json.loads(self.get(path, headers={"Content-type": "application/json"}))
+    def get(self, path:str, headers:t.Dict[str, str]={}):
+        return urllib_request(self._normalise_path(path), headers={"Authorization": f"Bearer {self.token}", **headers})  #"Content-type": "text/html", 
 
 
 class MicrosoftGraphObjectBase():
@@ -40,9 +39,12 @@ class MicrosoftGraphObjectBase():
             value = d.get(key)
             if value:
                 return value
-    @cached_property
+    @property
     def data(self) -> MappingProxyType[str, object]:
         return harden(self.g.get_json(self.path))
+    @property
+    def content(self):
+        return self.g.get(self.path + '/content')
     @property
     def name(self):
         return self._normalise_name(self.data)
@@ -53,9 +55,7 @@ class MicrosoftGraphObjectBase():
         })
 
 class NoteBookPage(MicrosoftGraphObjectBase):
-    @property
-    def content(self) -> BeautifulSoup:
-        return self.g.get_html(self.path + '/content')
+    pass
 
 class NoteBookSection(MicrosoftGraphObjectBase):
     @property
@@ -75,7 +75,7 @@ class NoteBook(MicrosoftGraphObjectBase):
     def sectionGroups(self) -> MappingProxyType[str, NoteBookSectionGroup]:
         return self._subpath('/sectionGroups', NoteBookSectionGroup)
 
-class User():
+class MicrosoftUser():
     def __init__(self, g:MicrosoftGraph, user:str):
         self.g = g
         self.user = user

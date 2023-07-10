@@ -2,9 +2,12 @@ from functools import cached_property
 
 import re
 
+from bs4 import BeautifulSoup
+
+
 class Journal():
-    def __init__(self, soup:BeautifulSoup):
-        self.soup = soup
+    def __init__(self, html):
+        self.soup = BeautifulSoup(html, features="html.parser")
     @cached_property
     def targets(self):
         def _get_target(target):

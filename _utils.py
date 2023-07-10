@@ -40,4 +40,4 @@ def urllib_request(*args, **kwargs):
     log.info(args[0])
     request = urllib.request.Request(*args, **kwargs)
     with urllib.request.urlopen(request) as response:
-        return response
+        return response.read()

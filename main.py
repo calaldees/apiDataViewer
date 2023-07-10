@@ -4,7 +4,7 @@ from pprint import pprint
 import logging
 log = logging.getLogger(__name__)
 
-from microsoft_graph import MicrosoftGraph, User
+from microsoft_graph import MicrosoftGraph, MicrosoftUser
 from eportfolio import Journal
 
 
@@ -13,8 +13,15 @@ if __name__ == "__main__":
 
     g = MicrosoftGraph(os.environ['token'])
 
-    journal = User(g, 'sm1161@canterbury.ac.uk').onenote_notebooks['CCCU SD e-portfolio 22 - Computing'].sectionGroups['Anthony Smith'].sections['Mentor Meeting Journal'].pages['WB 27th March'].content  #['Attendance Record'].pages['Term 1'].content
-    jj = Journal(journal)
+    journal_content = MicrosoftUser(g, 'sm1161@canterbury.ac.uk') \
+        .onenote_notebooks['CCCU SD e-portfolio 22 - Computing'] \
+        .sectionGroups['Anthony Smith'] \
+        .sections['Mentor Meeting Journal'] \
+        .pages['WB 27th March'] \
+        .content
+    #['Attendance Record'].pages['Term 1'].content
+
+    jj = Journal(journal_content)
     jj.target_reflections
     breakpoint()
     
