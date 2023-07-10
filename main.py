@@ -30,12 +30,12 @@ if __name__ == "__main__":
 
     notebooks = MicrosoftUser(g, 'sm1161@canterbury.ac.uk') .onenote_notebooks
 
-    eporfolios = ePortfolioManager(ChainMap(
+    eportfolios = ePortfolioManager(ChainMap(
         notebooks['CCCU SD e-portfolio 22 - Computing'].sectionGroups,
         notebooks['CCCU PG e-portfolio 22 - Computing'].sectionGroups,
     ))
     
-    eporfolios.targets
+    eportfolios.targets
 
     breakpoint()
     

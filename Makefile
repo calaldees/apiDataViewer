@@ -7,6 +7,5 @@ pdb:
 cache_tools.py:
 	curl https://raw.githubusercontent.com/calaldees/libs/master/python3/calaldees/cache_tools.py -O
 
-
 clear:
 	rm -rf __*
