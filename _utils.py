@@ -22,20 +22,6 @@ def harden(data):
     return data
 
 
-def get_key_contains(data, subkey):
-    """
-    >>> data = {'My moose':1, 'My elephant':2, 'Elephant': 3}
-    >>> get_key_contains(data, 'Moose')
-    1
-    >>> get_key_contains(data, 'Elephant')
-    2
-    """
-    for k, v in data.items():
-        if subkey.lower() in k.lower():
-            return v
-
-
-
 
 #import json
 #from bs4 import BeautifulSoup  # pip install beautifulsoup4
