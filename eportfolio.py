@@ -1,4 +1,4 @@
-from functools import cached_property
+from functools import cached_property, reduce
 import re
 from collections import ChainMap
 import typing as t
@@ -45,41 +45,9 @@ class ePortfolioManager():
             if 'documentation' not in student_name.lower() and _get(notebook, sections)
         })
 
-    @staticmethod
-    def extract_emails(html) -> t.Dict[str, str]:
-        soup = BeautifulSoup(html, features="html.parser")
-        regex_email = re.compile(r'[\w\-.]+@[\w\-.]+\.\w{2,4}')
-
-        _line_number_map = {
-            'professional': tuple(tag.parent.sourceline for tag in soup.find_all(string=re.compile('(pm|professional)', flags=re.IGNORECASE))),
-            'subject': tuple(tag.parent.sourceline for tag in soup.find_all(string=re.compile('(sm|subject)', flags=re.IGNORECASE))),
-        }
-        def _categorise_email(e):
-            _ = sorted({
-                min(abs(pos - e.parent.sourceline) for pos in poss): category
-                for category, poss in _line_number_map.items()
-                if poss
-            }.items())
-            return _[0][1] if _ else e.text
-        dd = {
-            _categorise_email(tag): tag.text
-            for tag in soup.find_all(string=regex_email)
-        }
-
-        return dd
-
-
     @property
     def mentors(self):
-        placement_type = re.compile(r'(1|2|base|contrast)', flags=re.IGNORECASE)
-
-        return {
-            student_name: {
-                page_name: self.extract_emails(page.content)
-                for page_name, page in notebook.pages.items()
-            }
-            for student_name, notebook in self._get_student_sections(('placement',)).items()
-        }
+        return Placement(self._get_student_sections(('placement',))).mentors
 
     @property
     def targets(self):
@@ -113,3 +81,72 @@ class Journal():
             tr.text.strip()
             for tr in self.soup.find(string=re.compile('last.+targets',flags=re.IGNORECASE)).find_next('table').find_all('tr')
         ][1:]
+
+
+class Placement():
+    def __init__(self, placement_sections):
+        self.placement_sections = placement_sections
+
+    @property
+    def mentors(self):
+        """
+        My god?! What a mess this is
+        Matching emails to possible mentor roles - over pages/placements that are inconsistent
+        PGCE and SD 'placement1' and 'placement2' have been normalised (I don't know if this is the way it should be)
+        """
+
+        def extract_emails(html) -> t.Dict[str, str]:
+            soup = BeautifulSoup(html, features="html.parser")
+            regex_email = re.compile(r'[\w\-.]+@[\w\-.]+\.\w{2,4}')
+
+            _line_number_map = {
+                'professional': tuple(tag.parent.sourceline for tag in soup.find_all(string=re.compile('(pm|professional)', flags=re.IGNORECASE))),
+                'subject': tuple(tag.parent.sourceline for tag in soup.find_all(string=re.compile('(sm|subject)', flags=re.IGNORECASE))),
+            }
+            def _score_email_category(e):
+                _ = sorted({
+                    min(abs(pos - e.parent.sourceline) for pos in poss): category
+                    for category, poss in _line_number_map.items()
+                    if poss
+                }.items())
+                return _[0] if _ else (1000, e.text)
+            scored_emails_to_category = {
+                tag.text.encode("ascii", "ignore").decode().strip(): _score_email_category(tag)
+                for tag in soup.find_all(string=regex_email)
+            }
+
+            def _best_match(acc, i):
+                email, (score, category) = i
+                if acc.get(category,(1000, email))[0] >= score:
+                    acc[category] = (score, email)
+                return acc
+            return {
+                category: email
+                for category, (score, email) in reduce(_best_match, scored_emails_to_category.items(), {}).items()
+            }
+
+        students_to_mentors_placement = {
+            student_name: {
+                page_name: extract_emails(page.content)
+                for page_name, page in notebook.pages.items()
+            }
+            for student_name, notebook in self.placement_sections.items()
+        }
+
+        _placement_map = {
+            'P1': re.compile(r'(1|base)', flags=re.IGNORECASE),
+            'P2': re.compile(r'(2|contrast)', flags=re.IGNORECASE),
+        }
+        def _normalise_placement_name(page_name):
+            for placement, _regex in _placement_map.items():
+                if _regex.search(page_name):
+                    return placement
+            return 'unknown'
+        return {
+            student: { 
+                _normalise_placement_name(placement_name): mentors
+                for placement_name, mentors in placement_mentors.items()
+                if mentors
+            }
+            for student, placement_mentors in students_to_mentors_placement.items()
+        }
