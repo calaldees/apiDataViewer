@@ -47,7 +47,7 @@ class ePortfolioManager():
 
     @property
     def mentors(self):
-        return Placement(self._get_student_sections(('placement',))).mentors
+        return Placements(self._get_student_sections(('placement',))).mentors
 
     @property
     def targets(self):
@@ -56,7 +56,6 @@ class ePortfolioManager():
             student_name: Journal(notebook.content).targets
             for student_name, notebook in student_journals_for_date.items()
         })
-
 
 
 class Journal():
@@ -83,7 +82,7 @@ class Journal():
         ][1:]
 
 
-class Placement():
+class Placements():
     def __init__(self, placement_sections):
         self.placement_sections = placement_sections
 
@@ -142,11 +141,11 @@ class Placement():
                 if _regex.search(page_name):
                     return placement
             return 'unknown'
-        return {
+        return harden({
             student: { 
                 _normalise_placement_name(placement_name): mentors
                 for placement_name, mentors in placement_mentors.items()
                 if mentors
             }
             for student, placement_mentors in students_to_mentors_placement.items()
-        }
+        })
