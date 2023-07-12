@@ -14,7 +14,7 @@ def safe_amalgamate_attrs(obj, attrs):
         getattr(obj, attr, None)
         for attr in attrs
     )))
-def get_key_contains(data, subkey):
+def get_key_contains(data, _regex):
     """
     >>> data = {'My moose':1, 'My elephant':2, 'Elephant': 3}
     >>> get_key_contains(data, 'Moose')
@@ -22,8 +22,9 @@ def get_key_contains(data, subkey):
     >>> get_key_contains(data, 'Elephant')
     2
     """
+    _regex = _regex if isinstance(_regex, re.Pattern) else re.compile(_regex, flags=re.IGNORECASE)
     for k, v in data.items():
-        if subkey.lower() in k.lower():
+        if _regex.search(k):
             return v
 def _get(oo, sections):
     for section in sections:
@@ -43,6 +44,42 @@ class ePortfolioManager():
             for student_name, notebook in self.notebooks.items()
             if 'documentation' not in student_name.lower() and _get(notebook, sections)
         })
+
+    @staticmethod
+    def extract_emails(html) -> t.Dict[str, str]:
+        soup = BeautifulSoup(html, features="html.parser")
+        regex_email = re.compile(r'[\w\-.]+@[\w\-.]+\.\w{2,4}')
+
+        _line_number_map = {
+            'professional': tuple(tag.parent.sourceline for tag in soup.find_all(string=re.compile('(pm|professional)', flags=re.IGNORECASE))),
+            'subject': tuple(tag.parent.sourceline for tag in soup.find_all(string=re.compile('(sm|subject)', flags=re.IGNORECASE))),
+        }
+        def _categorise_email(e):
+            _ = sorted({
+                min(abs(pos - e.parent.sourceline) for pos in poss): category
+                for category, poss in _line_number_map.items()
+                if poss
+            }.items())
+            return _[0][1] if _ else e.text
+        dd = {
+            _categorise_email(tag): tag.text
+            for tag in soup.find_all(string=regex_email)
+        }
+
+        return dd
+
+
+    @property
+    def mentors(self):
+        placement_type = re.compile(r'(1|2|base|contrast)', flags=re.IGNORECASE)
+
+        return {
+            student_name: {
+                page_name: self.extract_emails(page.content)
+                for page_name, page in notebook.pages.items()
+            }
+            for student_name, notebook in self._get_student_sections(('placement',)).items()
+        }
 
     @property
     def targets(self):

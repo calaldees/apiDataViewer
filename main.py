@@ -35,7 +35,8 @@ if __name__ == "__main__":
         notebooks['CCCU PG e-portfolio 22 - Computing'].sectionGroups,
     ))
     
-    eportfolios.targets
+    #eportfolios.targets
+    eportfolios.mentors
 
     breakpoint()
     
