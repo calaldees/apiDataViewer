@@ -11,3 +11,9 @@ https://mosaic.penrose.education/features/
 
 
 TODO: investigate "Step Lab"
+
+```cmd
+rem https://developer.microsoft.com/en-us/graph/graph-explorer
+set token=<PASTE-no-need-for-quotes>
+python main.py
+```

@@ -35,7 +35,7 @@ def _get(oo, sections):
 
 
 class ePortfolioManager():
-    def __init__(self, notebooks):
+    def __init__(self, notebooks):  # : MappingProxyType[str, NoteBookSectionGroup]
         self.notebooks = notebooks
 
     def _get_student_sections(self, sections: t.Iterable[str]) -> MappingProxyType[str, t.Any]:  # MicrosoftGraphObjectBase

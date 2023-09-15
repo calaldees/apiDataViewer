@@ -55,7 +55,8 @@ class MicrosoftGraphObjectBase():
         })
 
 class NoteBookPage(MicrosoftGraphObjectBase):
-    pass
+    #def duplicate(self, destination_section_groups: t.Iterable[NotebookSectionGroup]):
+        pass
 
 class NoteBookSection(MicrosoftGraphObjectBase):
     @property
