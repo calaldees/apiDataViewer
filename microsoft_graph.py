@@ -4,7 +4,7 @@ from functools import cached_property
 
 import json
 
-from _utils import urllib_request, harden
+from _utils import urllib_request, urllib_request_no_cache, harden
 
 
 import logging
@@ -23,6 +23,8 @@ class MicrosoftGraph():
         return json.loads(self.get(path, headers={"Content-type": "application/json"}))
     def get(self, path:str, headers:t.Dict[str, str]={}):
         return urllib_request(self._normalise_path(path), headers={"Authorization": f"Bearer {self.token}", **headers})  #"Content-type": "text/html", 
+    def post_json(self, path:str, data={}, headers:t.Dict[str,str]={}):
+        return json.loads(urllib_request_no_cache(self._normalise_path(path), data=json.dumps(data).encode('utf-8'), headers={"Authorization": f"Bearer {self.token}", "Content-type": "application/json", **headers}, method='POST'))
 
 
 class MicrosoftGraphObjectBase():

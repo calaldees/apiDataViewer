@@ -40,3 +40,16 @@ def urllib_request(*args, **kwargs):
     request = urllib.request.Request(*args, **kwargs)
     with urllib.request.urlopen(request) as response:
         return response.read()
+
+def urllib_request_no_cache(*args, **kwargs):
+    #log.info(args[0])
+    request = urllib.request.Request(*args, **kwargs)
+    with urllib.request.urlopen(request) as response:
+        return response.read()
+
+
+import csv
+from pathlib import Path
+def read_csv(path: Path):
+    with Path(path).open() as f:
+        return tuple(csv.DictReader(f))
